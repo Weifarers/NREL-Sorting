@@ -11,11 +11,13 @@ def main():
     # Gets a list of all the folders in the parent path, each folder of which contains our data.
     parent_list = os.listdir(parent_path)
 
+    # Establishes a location to store all the data we want.
     store_loc = parent_path + '\\Actual Data'
 
     # This sets our filter for terms we don't want.
     remove_words = ['DA', 'HA4', 'DPV']
 
+    # Sets any folders we want to skip over. 
     skip_folders = ['Code', 'ZIP Files']
 
     # We'll iterate through every folder in there.
