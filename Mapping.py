@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 
 
 def main():
@@ -7,8 +8,13 @@ def main():
     # handles the data is kept in a separate folder, named 'Code'. The parent path contains all the folders with
     # our data of interest.
     parent_path = os.path.dirname(os.getcwd()) + '\\Data'
-
+    # Reading in data.
+    pw_df = pd.read_csv('Syn70K_SolarGenBusUnit_LatLong.csv')
+    state_df = pd.read_csv('Filtered_State.csv')
     nrel_df = import_nrel(parent_path)
+
+    # Does the mapping.
+    map_data(nrel_df, pw_df, state_df)
 
 
 def import_nrel(parent_path):
@@ -22,7 +28,7 @@ def import_nrel(parent_path):
     file_names = [f for f in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, f))]
 
     # Initialize a DataFrame that we'll store all the latitudes and longitudes in.
-    nrel_df = pd.DataFrame(columns=['Rating', 'Latitude', 'Longitude'])
+    nrel_df = pd.DataFrame(columns=['Rating', 'Latitude', 'Longitude', 'File Name'])
 
     for i in range(len(file_names)):
         # Each file is named the same, so we split the name up into its components, separating by an underscore.
@@ -33,30 +39,104 @@ def import_nrel(parent_path):
         rating = curr_file[5]
 
         # Adding it onto our list.
-        nrel_df = nrel_df.append({'Rating': rating, 'Latitude': latitude, 'Longitude': longitude},
-                                         ignore_index=True)
+        nrel_df = nrel_df.append({'Rating': rating, 'Latitude': latitude,
+                                  'Longitude': longitude, 'File Name': file_names[i]},
+                                   ignore_index=True)
 
     return nrel_df
 
 
-def map_data(parent_path, nrel_df):
-    # Creates a data folder that we'll store the relevant CSVs in.
-    try:
-        os.mkdir(parent_path + '\\Mapping Data')
-    except OSError:
-        # If the directory already exists, don't complain.
-        pass
+def map_data(nrel_df, pw_df, state_df):
+    # Initializing some values for comparison.
+    prev_lat = 0
+    prev_long = 0
+    min_norm_idx = 0
 
-    # The structure here is pretty straightforward:
-    # 1) Get a list of all the units in the PW system, with their associated latitude and longitude.
-    # 2) For each unit, calculate the distance between that unit and all the units in our mapping DataFrame.
-    # 3) Get the closest one, and store that information into another DataFrame.
-    #   The DataFrame will have a few columns: Bus #/Unit #/Lat/Long/Closest NREL/NREL Lat/NREL Long
-    #   We'll write this DataFrame to a CSV, so we can sanity check that the Lat/Long are seemingly close.
-    #   Might revisit the File Adjustment.py, and make it so that we write out what files were taken from what state,
-    #   and use that information as a sanity check too.
-    # 4) After getting all the mappings done, we take all the files from 'Filtered Data' that were mapped, and copy
-    #    them over to a new directory.
+    # This dataFrame is used as a sanity check for after everything is done, and is written out to an Excel file.
+    data_df = pd.DataFrame(columns=['Number of Bus', 'ID', 'Substation Latitude', 'Substation Longitude',
+                                    'NREL Rating', 'NREL Latitude', 'NREL Longitude', 'State', 'File'])
+
+    # We'll use this data frame to store what file was mapped to what bus.
+    map_df = pd.DataFrame(columns=['Number of Bus', 'ID', 'Mapped File'])
+
+    for i in range(len(pw_df)):
+        # Temporary DataFrame to store the norms.
+        temp_df = pd.DataFrame(columns=['Number of Bus', 'ID', 'Norm', 'Associated File'])
+        # Get the current PW lat/long.
+        curr_pw_lat = pw_df.loc[i]['Substation Latitude']
+        curr_pw_long = pw_df.loc[i]['Substation Longitude']
+        if curr_pw_lat == prev_lat and curr_pw_long == prev_long:
+            # Stores the file that's been mapped to that bus to our DataFrame.
+            map_df = map_df.append({'Number of Bus': pw_df.loc[i]['Number of Bus'], 'ID': pw_df.loc[i]['ID'],
+                                    'Associated File': nrel_df.loc[min_norm_idx]['File Name']},
+                                   ignore_index=True)
+
+            # Gets the state associated with the file, to be used as a sanity check.
+            state_idx = state_df[state_df['File Name'] == nrel_df.loc[min_norm_idx]['File Name']].index.values[0]
+
+            # Stores this in our reference data frame.
+            data_df = data_df.append({'Number of Bus': pw_df.loc[i]['Number of Bus'], 'ID': pw_df.loc[i]['ID'],
+                                      'Substation Latitude': pw_df.loc[i]['Substation Latitude'],
+                                      'Substation Longitude': pw_df.loc[i]['Substation Longitude'],
+                                      'NREL Rating': nrel_df.loc[min_norm_idx]['Rating'],
+                                      'NREL Latitude': nrel_df.loc[min_norm_idx]['Latitude'],
+                                      'NREL Longitude': nrel_df.loc[min_norm_idx]['Longitude'],
+                                      'State': state_df.loc[state_idx]['State'],
+                                      'File': nrel_df.loc[min_norm_idx]['File Name']},
+                                     ignore_index=True)
+            # Just outputting what the mapping is.
+            print('Mapped Bus Number ' + str(int(pw_df.loc[i]['Number of Bus']))
+                  + ' to File: ' + nrel_df.loc[min_norm_idx]['File Name'])
+
+            # Then sets the previous latitude and longitude to our current one. This is so we can skip out on buses that
+            # have the same latitude and longitude, and just map them to the same file.
+            prev_lat = curr_pw_lat
+            prev_long = curr_pw_long
+        else:
+            # Now we cycle through all the NREL substations.
+            for j in range(len(nrel_df)):
+                # Gets the associated latitude and longitude.
+                curr_nrel_lat = nrel_df.loc[j]['Latitude']
+                curr_nrel_long = nrel_df.loc[j]['Longitude']
+                # Calculates the Euclidean norm. This is just a rough implementation of it.
+                norm_val = np.sqrt(np.square(curr_pw_lat - curr_nrel_lat) + np.square(curr_pw_long - curr_nrel_long))
+                # Appends this to our temporary DataFrame.
+                temp_df = temp_df.append({'Number of Bus': pw_df.loc[i]['Number of Bus'], 'ID': pw_df.loc[i]['ID'],
+                                          'Norm': norm_val, 'Associated File': nrel_df.loc[j]['File Name']},
+                                         ignore_index=True)
+
+            # Gets the index associated with the minimum Euclidean Norm.
+            min_norm_idx = temp_df['Norm'].idxmin()
+
+            # Stores the file that's been mapped to that bus to our DataFrame.
+            map_df = map_df.append({'Number of Bus': pw_df.loc[i]['Number of Bus'], 'ID': pw_df.loc[i]['ID'],
+                                    'Mapped File': nrel_df.loc[min_norm_idx]['File Name']},
+                                   ignore_index=True)
+
+            # Gets the state associated with the file, to be used as a sanity check.
+            state_idx = state_df[state_df['File Name'] == nrel_df.loc[min_norm_idx]['File Name']].index.values[0]
+
+            # Stores this in our reference data frame.
+            data_df = data_df.append({'Number of Bus': pw_df.loc[i]['Number of Bus'], 'ID': pw_df.loc[i]['ID'],
+                                      'Substation Latitude': pw_df.loc[i]['Substation Latitude'],
+                                      'Substation Longitude': pw_df.loc[i]['Substation Longitude'],
+                                      'NREL Rating': nrel_df.loc[min_norm_idx]['Rating'],
+                                      'NREL Latitude': nrel_df.loc[min_norm_idx]['Latitude'],
+                                      'NREL Longitude': nrel_df.loc[min_norm_idx]['Longitude'],
+                                      'State': state_df.loc[state_idx]['State'],
+                                      'File': nrel_df.loc[min_norm_idx]['File Name']},
+                                     ignore_index=True)
+            # Just outputting what the mapping is.
+            print('Mapped Bus Number ' + str(int(pw_df.loc[i]['Number of Bus']))
+                  + ' to File: ' + nrel_df.loc[min_norm_idx]['File Name'])
+            # Then sets the previous latitude and longitude to our current one. This is so we can skip out on buses that
+            # have the same latitude and longitude, and just map them to the same file.
+            prev_lat = curr_pw_lat
+            prev_long = curr_pw_long
+
+    # Writes these out to excel files.
+    map_df.to_csv('Mapped Files.csv', index=False)
+    data_df.to_csv('Reference Data.csv', index=False)
 
 
 if __name__ == "__main__":
