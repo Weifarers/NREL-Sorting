@@ -1,10 +1,11 @@
 import os
 import shutil
 import zipfile
+import pandas as pd
 
 
 def main():
-    # unzip()
+    unzip()
     data_filter()
 
 
@@ -21,7 +22,11 @@ def unzip():
     file_names = [f for f in os.listdir(zip_dir) if os.path.isfile(os.path.join(zip_dir, f))]
 
     # Creates a data folder that we'll store everything in.
-    os.mkdir(parent_path + '\\Data')
+    try:
+        os.mkdir(parent_path + '\\Data\\Raw Data')
+    except OSError:
+        # If the directory already exists, don't complain.
+        pass
 
     # Goes through every ZIP file one by one.
     for i in range(len(file_names)):
@@ -29,7 +34,7 @@ def unzip():
         current_zip = zip_dir + '\\' + file_names[i]
         # Extracts it to our parent path.
         with zipfile.ZipFile(current_zip, "r") as zip_ref:
-            zip_ref.extractall(parent_path + '\\Data')
+            zip_ref.extractall(parent_path + '\\Data\\Raw Data')
 
 
 def data_filter():
@@ -52,6 +57,9 @@ def data_filter():
     # This sets our filter for terms we don't want.
     remove_words = ['DA', 'HA4', 'DPV']
 
+    # We write a DataFrame to use as a sanity checker for later, where we store which state the file came from.
+    filtered_df = pd.DataFrame(columns=['State', 'File Name'])
+
     # We'll iterate through every folder in there.
     for i in range(len(parent_list)):
         # Gets the current folder we're looking at.
@@ -69,10 +77,18 @@ def data_filter():
                     continue
                 # Otherwise, move it to a new location where we consolidate all of the data.
                 else:
-                    shutil.move(curr_dir + '\\' + file_names[j], store_dir + '\\' + file_names[j])
+                    # Storing what state this file came from, as a sanity checker for later.
+                    filtered_df = filtered_df.append({'State': parent_list[i][:2],
+                                                      'File Name': file_names[j]},
+                                                     ignore_index=True)
+                    shutil.copy(curr_dir + '\\' + file_names[j], store_dir + '\\' + file_names[j])
+
+                filtered_df.to_csv('Filtered Data by State.csv', index=False)
         # Skips any files that are not a directory (zip files, etc).
         except NotADirectoryError:
             continue
+
+
 
 
 if __name__ == "__main__":
