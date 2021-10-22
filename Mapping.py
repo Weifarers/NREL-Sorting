@@ -57,7 +57,7 @@ def map_data(nrel_df, pw_df, state_df):
                                     'NREL Rating', 'NREL Latitude', 'NREL Longitude', 'State', 'File'])
 
     # We'll use this data frame to store what file was mapped to what bus.
-    map_df = pd.DataFrame(columns=['Number of Bus', 'ID', 'Mapped File'])
+    map_df = pd.DataFrame(columns=['Number of Bus', 'ID', 'Associated File'])
 
     for i in range(len(pw_df)):
         # Temporary DataFrame to store the norms.
@@ -110,7 +110,7 @@ def map_data(nrel_df, pw_df, state_df):
 
             # Stores the file that's been mapped to that bus to our DataFrame.
             map_df = map_df.append({'Number of Bus': pw_df.loc[i]['Number of Bus'], 'ID': pw_df.loc[i]['ID'],
-                                    'Mapped File': nrel_df.loc[min_norm_idx]['File Name']},
+                                    'Associated File': nrel_df.loc[min_norm_idx]['File Name']},
                                    ignore_index=True)
 
             # Gets the state associated with the file, to be used as a sanity check.

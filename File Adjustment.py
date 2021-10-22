@@ -83,12 +83,10 @@ def data_filter():
                                                      ignore_index=True)
                     shutil.copy(curr_dir + '\\' + file_names[j], store_dir + '\\' + file_names[j])
 
-                filtered_df.to_csv('Filtered Data by State.csv', index=False)
+                filtered_df.to_csv('Filtered_State.csv', index=False)
         # Skips any files that are not a directory (zip files, etc).
         except NotADirectoryError:
             continue
-
-
 
 
 if __name__ == "__main__":
