@@ -10,6 +10,12 @@ def main():
     parent_path = os.path.dirname(os.getcwd()) + '\\Data'
     # Reading in data.
     pw_df = pd.read_csv('Syn70K_SolarGenBusUnit_LatLong.csv')
+    # If there's an empty cell (which gets replaced with "Unnamed: 1") then skip the first row. This is just
+    # a rough way to check for that  "Gen" row at the top, and there's probably a better way of doing
+    # this check.
+    if "Unnamed: 1" in pw_df.columns:
+        pw_df = pd.read_csv('Syn70K_SolarGenBusUnit_LatLong.csv', skiprows=1)
+
     state_df = pd.read_csv('Filtered_State.csv')
     nrel_df = import_nrel(parent_path)
     print("Filtered Data imported.")
