@@ -12,6 +12,7 @@ def main():
     pw_df = pd.read_csv('Syn70K_SolarGenBusUnit_LatLong.csv')
     state_df = pd.read_csv('Filtered_State.csv')
     nrel_df = import_nrel(parent_path)
+    print("Filtered Data imported.")
 
     # Does the mapping.
     map_data(nrel_df, pw_df, state_df)

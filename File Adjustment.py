@@ -24,6 +24,7 @@ def unzip():
     # Creates a data folder that we'll store everything in.
     try:
         os.mkdir(parent_path + '\\Data\\Raw Data')
+        print("Created the Raw Data Folder.")
     except OSError:
         # If the directory already exists, don't complain.
         pass
@@ -35,6 +36,7 @@ def unzip():
         # Extracts it to our parent path.
         with zipfile.ZipFile(current_zip, "r") as zip_ref:
             zip_ref.extractall(parent_path + '\\Data\\Raw Data')
+            print('Extracted ', file_names[i], '.')
 
 
 def data_filter():
@@ -50,6 +52,7 @@ def data_filter():
     store_dir = parent_path + '\\Filtered Data'
     try:
         os.mkdir(store_dir)
+        print("Created the Filtered Data Folder.")
     except OSError:
         # If the directory already exists, don't complain.
         pass
@@ -84,6 +87,8 @@ def data_filter():
                     shutil.copy(curr_dir + '\\' + file_names[j], store_dir + '\\' + file_names[j])
 
                 filtered_df.to_csv('Filtered_State.csv', index=False)
+
+            print('Filtered files in ', parent_list[i], '.')
         # Skips any files that are not a directory (zip files, etc).
         except NotADirectoryError:
             continue

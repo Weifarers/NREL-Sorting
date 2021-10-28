@@ -65,6 +65,7 @@ def processing_data(parent_path, mapped_set):
             day_df['Day ' + str(j + 1)] = month_data['Power(MW)'][j * separate_key:(j + 1) * separate_key].values
         # Stores the mean in the average DataFrame, sorted by file name.
         average_df[curr_file] = day_df.mean(axis=1)
+        print("Average Calculations finished for ", curr_file)
 
     # Writes this data out for reference.
     average_df.to_csv('Average Per File.csv')
@@ -93,6 +94,7 @@ def mapping_average(average_df, mapped_data):
 
     # Writes this out to CSV.
     mapped_averages.to_csv('Mapped Averages.csv')
+    print("Averages mapped to all the buses.")
 
 
 if __name__ == "__main__":
