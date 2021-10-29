@@ -13,6 +13,7 @@ Project Folder
 |    ├── Pattern_Calculating.py
 └─── README.md
 ```
+**This should be all you need to get started.**
 
 ## File_Adjustment.py
   - There are three functions available, but only two are necessary at any given time.
