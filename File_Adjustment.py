@@ -2,11 +2,80 @@ import os
 import shutil
 import zipfile
 import pandas as pd
+from io import BytesIO
+import requests
 
 
 def main():
+    # web_scrape()
     unzip()
     data_filter()
+
+
+def web_scrape():
+    # Finds the path in which we want to store our data.
+    parent_path = os.path.dirname(os.getcwd())
+    # Creates a data folder that we'll store everything in.
+    try:
+        os.mkdir(parent_path + '\\Data\\')
+    except OSError:
+        pass
+
+    # Makes a folder to store all the raw data.
+    data_path = parent_path + '\\Data\\Raw Data\\'
+    try:
+        os.mkdir(data_path)
+        print("Created the Raw Data Folder.")
+    except OSError:
+        # If the directory already exists, don't complain.
+        pass
+
+    # Defines the base URL.
+    base_url = 'https://www.nrel.gov/grid/assets/downloads/'
+
+    # Since all the download links are the same, we'll just create a list of all the states by abbreviation.
+    east_states = ['al', 'ar', 'ct', 'de', 'fl', 'ga', 'il', 'in', 'ia', 'ks', 'la', 'me', 'md', 'ma', 'mi', 'mn',
+                   'ms', 'mt', 'ne', 'nh', 'nj', 'nm', 'ny', 'nc', 'oh', 'ok', 'pa', 'ri', 'sc', 'tn', 'vt',
+                   'va', 'wv', 'wi', 'tx-east', 'sd-east']
+
+    west_states = ['az', 'ca', 'co', 'id', 'mt', 'nv', 'or', 'sd', 'tx', 'ut', 'wa', 'wy']
+
+    all_states = ['al', 'ar', 'ct', 'de', 'fl', 'ga', 'il', 'in', 'ia', 'ks', 'la', 'me', 'md', 'ma', 'mi', 'mn',
+                   'ms', 'mt', 'ne', 'nh', 'nj', 'nm', 'ny', 'nc', 'oh', 'ok', 'pa', 'ri', 'sc', 'tn', 'vt',
+                   'va', 'wv', 'wi', 'tx-east', 'sd-east', 'az', 'ca', 'co', 'id', 'mt', 'nv', 'or', 'sd', 'tx',
+                   'ut', 'wa', 'wy']
+
+    # This is just for testing purposes.
+    test_state = ['ct']
+
+    # Here you can sub in whatever list you want from the above options (or make your own!)
+    state_list = all_states
+
+    for i in range(len(state_list)):
+        # Creates the URL to download the data from.
+        url = base_url + state_list[i] + '-pv-2006.zip'
+
+        # Grabs the data from the URL.
+        r = requests.get(url)
+
+        # Error check.
+        if not r.ok:
+            raise UserWarning('Failed to download for {}'.format(state_list[i]))
+
+        # Get data into ZIP archive.
+        z = zipfile.ZipFile(BytesIO(r.content))
+
+        # Creates a directory for that state.
+        folder_path = data_path + state_list[i] + '-pv-2006'
+        try:
+            os.mkdir(folder_path)
+        except OSError:
+            # Don't complain if the directory already exists.
+            pass
+
+        # Extracts that ZIP file into this directory.
+        z.extractall(path=folder_path)
+        print('Grabbed data for', state_list[i])
 
 
 def unzip():
@@ -15,11 +84,18 @@ def unzip():
     # handles the data is kept in a separate folder, named 'Code'. The parent path contains all the folders with
     # our data of interest.
     parent_path = os.path.dirname(os.getcwd())
+    # Creates a data folder that we'll store everything in.
+    try:
+        os.mkdir(parent_path + '\\Data\\')
+    except OSError:
+        pass
     # Since the ZIP files are always stored in the same place, I'll just hard code in their location.
     zip_dir = parent_path + '\\ZIP Files'
 
     # Gets all the files that are in the ZIP folder.
     file_names = [f for f in os.listdir(zip_dir) if os.path.isfile(os.path.join(zip_dir, f))]
+    # This is just a test one; you can ignore this.
+    # file_names = ['ct-pv-2006.zip']
 
     # Creates a data folder that we'll store everything in.
     try:
@@ -30,12 +106,14 @@ def unzip():
         pass
 
     # Goes through every ZIP file one by one.
+
     for i in range(len(file_names)):
         # Grabs the current ZIP file.
         current_zip = zip_dir + '\\' + file_names[i]
-        # Extracts it to our parent path.
-        with zipfile.ZipFile(current_zip, "r") as zip_ref:
-            zip_ref.extractall(parent_path + '\\Data\\Raw Data')
+
+        # Extracts the data to that folder.
+        with zipfile.ZipFile(current_zip) as zip_ref:
+            zip_ref.extractall(parent_path + '\\Data\\Raw Data\\')
             print('Extracted ', file_names[i], '.')
 
 
